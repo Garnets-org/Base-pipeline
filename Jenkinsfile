@@ -15,7 +15,8 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git url: "${params.REPO_URL}"
+                echo " Cloning repo: ${params.REPO_URL}"
+                git url: "${params.REPO_URL}", branch: 'main'
             }
         }
 
@@ -56,10 +57,9 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo " Simulated deploy to ${params.APP_ENV}"
+                echo "🚀 Simulated deploy to ${params.APP_ENV}"
             }
         }
     }
 }
-
 
