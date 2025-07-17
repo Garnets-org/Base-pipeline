@@ -2,8 +2,8 @@ pipeline {
     agent { label 'docker' }
 
     parameters {
-        string(name: 'REPO_URL', description: 'Git repo URL')
-        string(name: 'DOCKER_IMAGE', description: 'Full image name with tag')
+        string(name: 'REPO_URL', description: 'Git repo URL for the Flask app')
+        string(name: 'DOCKER_IMAGE', description: 'Full Docker image name with tag')
         string(name: 'DOCKER_CREDENTIALS_ID', defaultValue: 'dockerhub-creds', description: 'DockerHub credentials')
         string(name: 'APP_ENV', defaultValue: 'production', description: 'Deployment environment')
     }
@@ -13,30 +13,37 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
-                echo " Cloning repo: ${params.REPO_URL}"
-                git url: "${params.REPO_URL}", branch: 'main'
+                dir('flaskapp-code') {
+                    echo " Cloning repo: ${params.REPO_URL}"
+                    git url: "${params.REPO_URL}", branch: 'main'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo " Building Docker image: ${IMAGE}"
-                sh "docker build -t ${IMAGE} ."
+                dir('flaskapp-code') {
+                    echo " Building Docker image: ${IMAGE}"
+                    sh "docker build -t ${IMAGE} ."
+                }
             }
         }
 
         stage('Security Scan') {
             steps {
-                echo " Running Snyk and Trivy scans..."
-                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
-                    sh """
-                        snyk auth \$SNYK_TOKEN
-                        snyk test --docker ${IMAGE} --file=Dockerfile --severity-threshold=high
-                    """
+                dir('flaskapp-code') {
+                    echo " Running Snyk and Trivy scans..."
+                    withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                        sh """
+                            snyk auth \$SNYK_TOKEN
+                            snyk test --docker ${IMAGE} --file=Dockerfile --severity-threshold=high
+                        """
+                    }
+                    sh "trivy image ${IMAGE} || true"
                 }
-                sh "trivy image ${IMAGE} || true"
             }
         }
 
@@ -57,7 +64,7 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo "🚀 Simulated deploy to ${params.APP_ENV}"
+                echo " Simulated deploy to ${params.APP_ENV}"
             }
         }
     }
